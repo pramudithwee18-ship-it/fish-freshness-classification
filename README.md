@@ -1,25 +1,37 @@
-# Fish Freshness Classification
+# Deep Learning for Fish Freshness Detection
 
-Deep-learning models that classify fish images as **Fresh Fish** or **Non Fresh Fish**.
-Three approaches were built and compared:
+Detects whether a fish is **Fresh** or **Non-Fresh** from images of its eye. The eye's clarity, convexity, corneal transparency and colour are reliable freshness indicators.
 
-| # | Approach | Framework | Notebook |
-|---|----------|-----------|----------|
-| 1 | Custom CNN (Conv2D + BatchNorm + Dropout, L2 regularisation) | TensorFlow / Keras | [`notebooks/01-first-architecture/model3.ipynb`](notebooks/01-first-architecture/model3.ipynb) |
-| 2 | Transfer learning with **MobileNetV2** | TensorFlow / Keras | [`notebooks/02-mobilenetv2/`](notebooks/02-mobilenetv2/) |
-| 3 | **YOLOv8** classification (Ultralytics, 640px, 100 epochs) | PyTorch / Ultralytics | [`notebooks/03-yolov8/fishfreshness_yolov8.ipynb`](notebooks/03-yolov8/fishfreshness_yolov8.ipynb) |
+Final project for the **Higher National Diploma in Data Science** at NIBM – Kandy Innovation Center (2025), by Pramuditha Weerathunga.
 
-## Trained models
+## Results
 
-| File | Description |
-|------|-------------|
-| `models/mobilenetv2_fish_freshness.h5` | Keras MobileNetV2 model |
-| `models/yolov8_best.pt` | YOLOv8 best weights |
+| Model | Type | Accuracy | Precision | Recall | Other |
+|-------|------|----------|-----------|--------|-------|
+| Baseline CNN (`model3`) | Classification, 224×224 | 84.2% | – | – | Overfits |
+| **MobileNetV2 + regularisation (`best_5`)** | Classification, 224×224 | **92.1%** | 91.5% | 92.8% | ROC-AUC ≈ 0.97 |
+| **YOLOv8n** | Object detection, 640×640 | ≈87.3% | 88.8% | 90.8% | mAP@0.5 = 96.4% |
+
+- **MobileNetV2 (best_5)** gives the highest accuracy on cropped eye images. It uses an ImageNet-pretrained frozen backbone plus dropout, L2 regularisation, batch normalisation and a Swish dense layer. With a tuned decision threshold of 0.4478, only 12 of 206 spoiled fish were labelled fresh.
+- **YOLOv8** finds the eye region in a raw, uncropped photo and classifies it in the same step, which makes it the best choice for a real-time camera or mobile app.
+
+## Repository structure
+
+```
+notebooks/
+  01-first-architecture/model3.ipynb       Baseline Keras Sequential CNN
+  02-mobilenetv2/model_4.ipynb             MobileNetV2 transfer learning
+  02-mobilenetv2/best_5.ipynb              Final regularised MobileNetV2 model
+  03-yolov8/fishfreshness_yolov8.ipynb     YOLOv8 detection training
+models/
+  mobilenetv2_fish_freshness.h5            Trained Keras model
+  yolov8_best.pt                           Trained YOLOv8 weights
+```
 
 ## Dataset
 
-The "FISH FRESH AND NON-FRESH" dataset (v1) from Roboflow, with 2 classes. It isn't stored in this repo because it is over GitHub's 100 MB file limit.
-The notebooks download it through the Roboflow API:
+"FISH FRESH AND NON-FRESH" (v1) on Roboflow. It contains annotated fish-eye images based on Anas, Jaya & Herdiyeni (2024), [*Measurement and Analysis of Detecting Fish Freshness Levels Using Deep Learning Method*](https://doi.org/10.22146/ijccs.95054).
+The dataset isn't stored in this repo because it is over GitHub's 100 MB file limit. The notebooks download it through the Roboflow API:
 
 ```python
 import os
@@ -28,25 +40,28 @@ rf = Roboflow(api_key=os.environ["ROBOFLOW_API_KEY"])
 dataset = rf.workspace("meva-wfywb").project("fish-fresh-and-non-fresh").version(1).download("folder")
 ```
 
-Set the `ROBOFLOW_API_KEY` environment variable (or Colab secret) to your own Roboflow key.
-
 ## Running
 
-The notebooks were written for Google Colab. Open one in Colab, set your Roboflow key, and run all cells.
+The notebooks were written for Google Colab with GPU. Set `ROBOFLOW_API_KEY` to your own Roboflow key, then run all cells.
 
 ```bash
 pip install tensorflow roboflow ultralytics
 ```
 
-## Using the trained models
+### Using the trained models
 
 ```python
 from ultralytics import YOLO
 model = YOLO("models/yolov8_best.pt")
-print(model("fish.jpg")[0].probs.top1)
+results = model("fish.jpg")
+results[0].show()
 ```
 
 ```python
 import tensorflow as tf
 model = tf.keras.models.load_model("models/mobilenetv2_fish_freshness.h5")
 ```
+
+## Tech stack
+
+Python · TensorFlow / Keras · MobileNetV2 · Ultralytics YOLOv8 · Roboflow · Google Colab
